@@ -9,6 +9,7 @@
   "dependencies": {
     "react": "16.0.0-alpha.6",
     "react-native": "0.43.4",
+    "react-native-fs": "^2.3.2",
     "react-native-keep-awake": "^2.0.4",
     "react-native-maps": "^0.14.0"
   },
