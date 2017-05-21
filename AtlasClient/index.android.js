@@ -13,7 +13,11 @@ export default class AtlasClient extends Component {
         longitude: 19.907176,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
-      }
+      },
+      userPosition: {
+        latitude: 50.030521,
+        longitude: 19.907176,
+      },
     };
   }
 
@@ -30,7 +34,12 @@ export default class AtlasClient extends Component {
             longitude: position.coords.longitude,
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
-        }});
+          },
+          userPosition: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }
+        });
       },
       (error) => alert('Unable to retrieve current location'),
       {enableHighAccuracy: true, timeout: 60000, maximumAge: 1000}
@@ -53,7 +62,7 @@ export default class AtlasClient extends Component {
     return (
       <View style={styles.parent}>
         <MapView style={styles.map} region={this.state.region}>
-          <MapView.Marker coordinate={this.state.region}/>
+          <MapView.Marker coordinate={this.state.userPosition}/>
           <MapView.Polyline coordinates={route} strokeWidth={3} strokeColor='blue'/>
         </MapView>
         <View style={styles.buttons}>
