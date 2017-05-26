@@ -93,7 +93,8 @@ export default class AtlasClient extends Component {
             userPosition: {
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
-            },
+              visible : true,
+          },
             route: this.recordedRoute.slice(),
           });
         },
