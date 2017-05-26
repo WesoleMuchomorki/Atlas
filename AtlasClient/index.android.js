@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Alert, AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
 import MapView from 'react-native-maps';
 import KeepAwake from 'react-native-keep-awake';
 
@@ -17,6 +17,7 @@ export default class AtlasClient extends Component {
         longitudeDelta: 0.01,
       },
       userPosition: {
+        visible: false,
         latitude: 50.030521,
         longitude: 19.907176,
       },
@@ -29,6 +30,8 @@ export default class AtlasClient extends Component {
         { latitude: 50.033033, longitude: 19.907637 },
       ],
       recordTitle: 'Record route',
+      loading : false,
+
     };
   }
 
@@ -37,6 +40,13 @@ export default class AtlasClient extends Component {
   };
 
   onLocationPress() {
+    this.setState({
+      loading : true,
+      userPosition :
+      {
+        visible : false,
+      }
+    });
     navigator.geolocation.getCurrentPosition(
       (position) => {
         this.setState({
@@ -49,10 +59,17 @@ export default class AtlasClient extends Component {
           userPosition: {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          }
+            visible: true,
+          },
+          loading : false,
         });
       },
-      (error) => alert('Unable to retrieve current location'),
+      (error) => {
+        this.setState({
+          loading : false,
+        });
+        alert('Unable to retrieve current location');
+      },
       {enableHighAccuracy: true, timeout: 60000, maximumAge: 1000}
     );
   };
@@ -100,15 +117,24 @@ export default class AtlasClient extends Component {
 
   render() {
     return (
-      <View style={styles.parent}>
+      <View style={styles.main}>
         <MapView style={styles.map} region={this.state.region}>
-          <MapView.Marker coordinate={this.state.userPosition}/>
+          {this.state.userPosition.visible &&
+            <MapView.Marker coordinate={this.state.userPosition}/>
+          }
           <MapView.Polyline coordinates={this.state.route} strokeWidth={3} strokeColor='blue'/>
         </MapView>
+        <View />
+        <ActivityIndicator
+          // there is bug in react-native: https://stackoverflow.com/questions/38579665/reactnative-activityindicator-not-showing-when-animating-property-initiate-false
+          style={[styles.indicator, {opacity: this.state.loading ? 1.0 : 0.0}]}
+          animating={true}
+          size="large"
+        />
         <View style={styles.buttons}>
-          <Button title='Display route' onPress={this.onDisplayPress.bind(this)} color='blue'/>
-          <Button title='My location' onPress={this.onLocationPress.bind(this)} color='green'/>
-          <Button title={this.state.recordTitle} onPress={this.onRecordPress.bind(this)} color='red'/>
+          <Button title='Display route' onPress={this.onDisplayPress.bind(this)} color='blue' disabled={this.state.loading} />
+          <Button title='My location' onPress={this.onLocationPress.bind(this)} color='green' disabled={this.state.loading} />
+          <Button title={this.state.recordTitle} onPress={this.onRecordPress.bind(this)} color='red' disabled={this.state.loading} />
         </View>
         <KeepAwake/>
       </View>
@@ -117,9 +143,9 @@ export default class AtlasClient extends Component {
 }
 
 const styles = StyleSheet.create({
-  parent: {
+  main: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -128,6 +154,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  indicator: {
+    alignItems: 'center',
+  }
 });
 
 AppRegistry.registerComponent('AtlasClient', () => AtlasClient);
