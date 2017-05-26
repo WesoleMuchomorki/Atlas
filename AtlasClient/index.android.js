@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { ActivityIndicator, Alert, AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppRegistry, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView from 'react-native-maps';
 import KeepAwake from 'react-native-keep-awake';
 
@@ -21,7 +21,9 @@ export default class AtlasClient extends Component {
         latitude: 50.030521,
         longitude: 19.907176,
       },
-      route: [
+      recordedRoute :
+      [],
+      displayedRoute: [
         { latitude: 50.030303, longitude: 19.907702 },
         { latitude: 50.031696, longitude: 19.909246 },
         { latitude: 50.031848, longitude: 19.908924 },
@@ -29,17 +31,19 @@ export default class AtlasClient extends Component {
         { latitude: 50.032054, longitude: 19.906918 },
         { latitude: 50.033033, longitude: 19.907637 },
       ],
-      recordTitle: 'Record route',
+      thirdButton: 'Record route',
       loading : false,
-
+      disableSecondButton : false,
+      disableThirdButton : false,
+      inputRouteName : false,
     };
   }
 
-  onDisplayPress() {
+  onFirstButtonPress() {
     Alert.alert('Display has been pressed!');
   };
 
-  onLocationPress() {
+  onSecondButttonPress() {
     this.setState({
       loading : true,
       userPosition :
@@ -74,12 +78,21 @@ export default class AtlasClient extends Component {
     );
   };
 
-  onRecordPress() {
-    if (this.state.recordTitle == 'Record route') {
-      this.recordedRoute = [];
+  onThirdButtonPress() {
+    if (this.state.thirdButton == 'Record route') {
+      this.setState({
+        userPosition : {
+          visible : false,
+        },
+        loading : true,
+        disableSecondButton : true,
+        thirdButton: 'Save route',
+        recordedRoute: [],
+      })
       this.watchID = navigator.geolocation.watchPosition(
         (position) => {
-          this.recordedRoute.push({
+          var newRecordedRoute = this.state.recordedRoute.slice();
+          newRecordedRoute.push({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
           });
@@ -94,27 +107,48 @@ export default class AtlasClient extends Component {
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
               visible : true,
-          },
-            route: this.recordedRoute.slice(),
+            },
+            loading : false,
+            recordedRoute : newRecordedRoute,
           });
         },
-        (error) => {},
-        {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000}
+        (error) => {
+          alert('Unable to retrieve current location');
+          this.setState({
+            loading: false,
+          })
+        },
+        {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000, distanceFilter: 5}
       );
-      this.setState({ route: this.recordedRoute.slice(), recordTitle: 'Save route' });
     } else {
-      navigator.geolocation.clearWatch(this.watchID);
-      var path = RNFS.ExternalDirectoryPath + '/AtlasRoute.json';
-      RNFS.writeFile(path, JSON.stringify(this.recordedRoute), 'utf8')
+      this.setState({
+        inputRouteName : true,
+      });
+    }
+  };
+
+  onInputRouteNameSavePress(){
+    navigator.geolocation.clearWatch(this.watchID);
+    this.setState({
+        inputRouteName : false,
+        thirdButton: 'Record route',
+        disableSecondButton : false,
+    });
+    /*var path = RNFS.ExternalDirectoryPath + '/AtlasRoute.json';
+      RNFS.writeFile(path, JSON.stringify(this.state.recordedRoute), 'utf8')
       .then((success) => {
         alert('The route has been saved.');
       })
       .catch((err) => {
         alert('Unable to save the route.');
-      });
-      this.setState({ route: this.recordedRoute.slice(), recordTitle: 'Record route' });
-    }
-  };
+      });*/
+  }
+
+  onInputRouteNameCancelPress() {
+    this.setState({
+      inputRouteName : false,
+    });
+  }
 
   render() {
     return (
@@ -123,19 +157,28 @@ export default class AtlasClient extends Component {
           {this.state.userPosition.visible &&
             <MapView.Marker coordinate={this.state.userPosition}/>
           }
-          <MapView.Polyline coordinates={this.state.route} strokeWidth={3} strokeColor='blue'/>
+          <MapView.Polyline coordinates={this.state.recordedRoute} strokeWidth={3} strokeColor='red'/>
+          <MapView.Polyline coordinates={this.state.displayedRoute} strokeWidth={3} strokeColor='blue'/>
         </MapView>
         <View />
-        <ActivityIndicator
-          // there is bug in react-native: https://stackoverflow.com/questions/38579665/reactnative-activityindicator-not-showing-when-animating-property-initiate-false
-          style={[styles.indicator, {opacity: this.state.loading ? 1.0 : 0.0}]}
+        {this.state.loading &&
+        <ActivityIndicator // there is bug in react-native: https://stackoverflow.com/questions/38579665/reactnative-activityindicator-not-showing-when-animating-property-initiate-false
+          style={styles.indicator}
           animating={true}
           size="large"
         />
+        }
+        {this.state.inputRouteName &&
+        <View style={styles.inputRouteName}>
+          <TextInput style={styles.inputRouteNameTextInput} />
+          <Button style={styles.inputRouteNameButtonCancel} title='Cancel' onPress={this.onInputRouteNameCancelPress.bind(this)} color='green' />
+          <Button style={styles.inputRouteNameButtonSave} title='Save' onPress={this.onInputRouteNameSavePress.bind(this)} color='green' />
+        </View>
+        }
         <View style={styles.buttons}>
-          <Button title='Display route' onPress={this.onDisplayPress.bind(this)} color='blue' disabled={this.state.loading} />
-          <Button title='My location' onPress={this.onLocationPress.bind(this)} color='green' disabled={this.state.loading} />
-          <Button title={this.state.recordTitle} onPress={this.onRecordPress.bind(this)} color='red' disabled={this.state.loading} />
+          <Button title='Display route' onPress={this.onFirstButtonPress.bind(this)} color='blue' disabled={this.state.loading} />
+          <Button title='My location' onPress={this.onSecondButttonPress.bind(this)} color='green' disabled={this.state.loading || this.state.disableSecondButton } />
+          <Button title={this.state.thirdButton} onPress={this.onThirdButtonPress.bind(this)} color='red' disabled={this.state.loading || this.state.disableThirdButton } />
         </View>
         <KeepAwake/>
       </View>
@@ -157,6 +200,24 @@ const styles = StyleSheet.create({
   },
   indicator: {
     alignItems: 'center',
+  },
+  inputRouteName: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    borderColor: 'black',
+    borderWidth: 1,
+    alignItems: 'center',
+    paddingLeft: 20,
+    paddingRight: 20,
+  },
+  inputRouteNameButtonSave: {
+  },
+  inputRouteNameButtonCancel: {
+  },
+  inputRouteNameTextInput: {
+    borderWidth: 0,
+    width: 160,
   }
 });
 
