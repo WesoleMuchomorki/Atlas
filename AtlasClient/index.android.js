@@ -1,42 +1,69 @@
 import React, { Component } from 'react';
-import { ActivityIndicator, Alert, AppRegistry, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import
+{
+  ActivityIndicator,
+  Alert,
+  AppRegistry,
+  Button,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
 import MapView from 'react-native-maps';
 import KeepAwake from 'react-native-keep-awake';
 
 var RNFS = require('react-native-fs');
+
+var DISPLAY_ROUTE_TEXT = 'Display route'
+var CANCEL_ROUTE_TEXT  = 'Cancel route';
+var RECORD_ROUTE_TEXT  = 'Record route';
+var SAVE_ROUTE_TEXT    = 'Save route';
+var MY_LOCATION_TEXT   = 'My location';
+
+var ROUTES_FOLDER_PATH = RNFS.ExternalDirectoryPath + "/AtlasRoute/"
 
 export default class AtlasClient extends Component {
 
   constructor(props) {
     super(props);
     this.state = {
-      region: {
-        latitude: 50.030521,
-        longitude: 19.907176,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+      region : {
+        latitude : 50.030521,
+        longitude : 19.907176,
+        latitudeDelta : 0.01,
+        longitudeDelta : 0.01,
       },
-      userPosition: {
-        visible: false,
-        latitude: 50.030521,
-        longitude: 19.907176,
+      userPosition : {
+        visible : false,
+        latitude : 50.030521,
+        longitude : 19.907176,
       },
       recordedRoute :
       [],
-      displayedRoute: [
-        { latitude: 50.030303, longitude: 19.907702 },
-        { latitude: 50.031696, longitude: 19.909246 },
-        { latitude: 50.031848, longitude: 19.908924 },
-        { latitude: 50.031703, longitude: 19.908291 },
-        { latitude: 50.032054, longitude: 19.906918 },
-        { latitude: 50.033033, longitude: 19.907637 },
+      displayedRoute : [
+        { latitude : 50.030303, longitude : 19.907702 },
+        { latitude : 50.031696, longitude : 19.909246 },
+        { latitude : 50.031848, longitude : 19.908924 },
+        { latitude : 50.031703, longitude : 19.908291 },
+        { latitude : 50.032054, longitude : 19.906918 },
+        { latitude : 50.033033, longitude : 19.907637 },
       ],
-      thirdButton: 'Record route',
+      firstButtonText : DISPLAY_ROUTE_TEXT,
+      secondButtonText : MY_LOCATION_TEXT,
+      thirdButtonText : RECORD_ROUTE_TEXT,
       loading : false,
-      disableSecondButton : false,
       disableThirdButton : false,
       inputRouteName : false,
+      routeNameTextInput : '',
     };
+    RNFS.mkdir(ROUTES_FOLDER_PATH)
+    .then((result) => {
+      console.info("Folder " + ROUTES_FOLDER_PATH + " succesfully created.");
+    })
+    .catch((err) => {
+      console.log(err);
+    })
   }
 
   onFirstButtonPress() {
@@ -44,85 +71,102 @@ export default class AtlasClient extends Component {
   };
 
   onSecondButttonPress() {
-    this.setState({
-      loading : true,
-      userPosition :
-      {
-        visible : false,
-      }
-    });
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        this.setState({
-          region: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
+    if (this.state.secondButtonText == MY_LOCATION_TEXT) {
+      this.setState({
+        loading : true,
+        userPosition :
+        {
+          visible : false,
+        }
+      });
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          this.setState((prevState) => ({
+            region : {
+              latitude : position.coords.latitude,
+              longitude : position.coords.longitude,
+              latitudeDelta : prevState.region.latitudeDelta,
+              longitudeDelta : prevState.region.longitudeDelta,
+            },
+            userPosition : {
+              latitude : position.coords.latitude,
+              longitude : position.coords.longitude,
+              visible : true,
+            },
+            loading : false,
+          }));
+        },
+        (error) => {
+          this.setState({
+            loading : false,
+          });
+          alert('Unable to retrieve current location');
+        },
+        {enableHighAccuracy : true, timeout : 60000, maximumAge : 1000}
+      );
+    } else if (this.state.secondButtonText == CANCEL_ROUTE_TEXT){
+      navigator.geolocation.clearWatch(this.watchID);
+      this.setState({
+          thirdButtonText : RECORD_ROUTE_TEXT,
+          secondButtonText : MY_LOCATION_TEXT,
+          userPosition :
+          {
+            visible : false,
           },
-          userPosition: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            visible: true,
-          },
-          loading : false,
-        });
-      },
-      (error) => {
-        this.setState({
-          loading : false,
-        });
-        alert('Unable to retrieve current location');
-      },
-      {enableHighAccuracy: true, timeout: 60000, maximumAge: 1000}
-    );
+          disableThirdButton : false,
+          inputRouteName : false,
+      });
+      alert("The route has been canceled.");
+
+    }
   };
 
   onThirdButtonPress() {
-    if (this.state.thirdButton == 'Record route') {
+    if (this.state.thirdButtonText == RECORD_ROUTE_TEXT) {
       this.setState({
         userPosition : {
           visible : false,
         },
         loading : true,
-        disableSecondButton : true,
-        thirdButton: 'Save route',
-        recordedRoute: [],
+        secondButtonText : CANCEL_ROUTE_TEXT,
+        thirdButtonText : SAVE_ROUTE_TEXT,
+        recordedRoute : [],
       })
       this.watchID = navigator.geolocation.watchPosition(
         (position) => {
           var newRecordedRoute = this.state.recordedRoute.slice();
           newRecordedRoute.push({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
+            latitude : position.coords.latitude,
+            longitude : position.coords.longitude
           });
-          this.setState({
-            region: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
+          this.setState((prevState) => ({
+            region : {
+              latitude : position.coords.latitude,
+              longitude : position.coords.longitude,
+              latitudeDelta : prevState.region.latitudeDelta,
+              longitudeDelta : prevState.region.longitudeDelta,
             },
-            userPosition: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
+            userPosition : {
+              latitude : position.coords.latitude,
+              longitude : position.coords.longitude,
               visible : true,
             },
             loading : false,
             recordedRoute : newRecordedRoute,
-          });
+          }));
         },
         (error) => {
           alert('Unable to retrieve current location');
           this.setState({
-            loading: false,
+            loading : false,
           })
         },
-        {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000, distanceFilter: 5}
+        {enableHighAccuracy : true, timeout : 20000, maximumAge : 1000, distanceFilter : 3}
       );
-    } else {
+    } else if (this.state.thirdButtonText == SAVE_ROUTE_TEXT){
       this.setState({
         inputRouteName : true,
+        disableThirdButton : true,
       });
     }
   };
@@ -131,29 +175,48 @@ export default class AtlasClient extends Component {
     navigator.geolocation.clearWatch(this.watchID);
     this.setState({
         inputRouteName : false,
-        thirdButton: 'Record route',
-        disableSecondButton : false,
+        thirdButtonText : RECORD_ROUTE_TEXT,
+        secondButtonText : MY_LOCATION_TEXT,
+        disableThirdButton : false,
+        userPosition :
+        {
+          visible : false,
+        },
     });
-    /*var path = RNFS.ExternalDirectoryPath + '/AtlasRoute.json';
-      RNFS.writeFile(path, JSON.stringify(this.state.recordedRoute), 'utf8')
-      .then((success) => {
-        alert('The route has been saved.');
-      })
-      .catch((err) => {
-        alert('Unable to save the route.');
-      });*/
+    var path = ROUTES_FOLDER_PATH + this.state.routeNameTextInput + " .json";
+    RNFS.writeFile(path, JSON.stringify(this.state.recordedRoute), 'utf8')
+    .then((success) => {
+      alert('The route has been saved.');
+    })
+    .catch((err) => {
+      alert('Unble to save the route.');
+      console.log(err);
+    });
   }
 
   onInputRouteNameCancelPress() {
     this.setState({
       inputRouteName : false,
+      disableThirdButton : false,
+    });
+  }
+
+  onRegionChange(myRegion) {
+    this.setState({
+      region: myRegion,
+    });
+  }
+
+  onTextInputChange(text) {
+    this.setState({
+      routeNameTextInput : text,
     });
   }
 
   render() {
     return (
       <View style={styles.main}>
-        <MapView style={styles.map} region={this.state.region}>
+        <MapView style={styles.map} region={this.state.region} onRegionChange={this.onRegionChange.bind(this)} >
           {this.state.userPosition.visible &&
             <MapView.Marker coordinate={this.state.userPosition}/>
           }
@@ -162,7 +225,7 @@ export default class AtlasClient extends Component {
         </MapView>
         <View />
         {this.state.loading &&
-        <ActivityIndicator // there is bug in react-native: https://stackoverflow.com/questions/38579665/reactnative-activityindicator-not-showing-when-animating-property-initiate-false
+        <ActivityIndicator // there is bug in react-native : https ://stackoverflow.com/questions/38579665/reactnative-activityindicator-not-showing-when-animating-property-initiate-false
           style={styles.indicator}
           animating={true}
           size="large"
@@ -170,15 +233,15 @@ export default class AtlasClient extends Component {
         }
         {this.state.inputRouteName &&
         <View style={styles.inputRouteName}>
-          <TextInput style={styles.inputRouteNameTextInput} />
+          <TextInput style={styles.inputRouteNameTextInput} onChangeText={this.onTextInputChange.bind(this)} />
           <Button style={styles.inputRouteNameButtonCancel} title='Cancel' onPress={this.onInputRouteNameCancelPress.bind(this)} color='green' />
           <Button style={styles.inputRouteNameButtonSave} title='Save' onPress={this.onInputRouteNameSavePress.bind(this)} color='green' />
         </View>
         }
         <View style={styles.buttons}>
-          <Button title='Display route' onPress={this.onFirstButtonPress.bind(this)} color='blue' disabled={this.state.loading} />
-          <Button title='My location' onPress={this.onSecondButttonPress.bind(this)} color='green' disabled={this.state.loading || this.state.disableSecondButton } />
-          <Button title={this.state.thirdButton} onPress={this.onThirdButtonPress.bind(this)} color='red' disabled={this.state.loading || this.state.disableThirdButton } />
+          <Button title={this.state.firstButtonText} onPress={this.onFirstButtonPress.bind(this)} color='blue' disabled={this.state.loading} />
+          <Button title={this.state.secondButtonText} onPress={this.onSecondButttonPress.bind(this)} color='green' disabled={this.state.loading} />
+          <Button title={this.state.thirdButtonText} onPress={this.onThirdButtonPress.bind(this)} color='red' disabled={this.state.loading || this.state.disableThirdButton } />
         </View>
         <KeepAwake/>
       </View>
@@ -187,37 +250,37 @@ export default class AtlasClient extends Component {
 }
 
 const styles = StyleSheet.create({
-  main: {
-    flex: 1,
-    justifyContent: 'space-between',
+  main : {
+    flex : 1,
+    justifyContent : 'space-between',
   },
-  map: {
+  map : {
     ...StyleSheet.absoluteFillObject,
   },
-  buttons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  buttons : {
+    flexDirection : 'row',
+    justifyContent : 'space-between',
   },
-  indicator: {
-    alignItems: 'center',
+  indicator : {
+    alignItems : 'center',
   },
-  inputRouteName: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: 'white',
-    borderColor: 'black',
-    borderWidth: 1,
-    alignItems: 'center',
-    paddingLeft: 20,
-    paddingRight: 20,
+  inputRouteName : {
+    flexDirection : 'row',
+    justifyContent : 'space-between',
+    backgroundColor : 'white',
+    borderColor : 'black',
+    borderWidth : 1,
+    alignItems : 'center',
+    paddingLeft : 20,
+    paddingRight : 20,
   },
-  inputRouteNameButtonSave: {
+  inputRouteNameButtonSave : {
   },
-  inputRouteNameButtonCancel: {
+  inputRouteNameButtonCancel : {
   },
-  inputRouteNameTextInput: {
-    borderWidth: 0,
-    width: 160,
+  inputRouteNameTextInput : {
+    borderWidth : 0,
+    width : 160,
   }
 });
 
