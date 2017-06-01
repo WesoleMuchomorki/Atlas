@@ -153,7 +153,30 @@ export default class AtlasClient extends Component {
       alert("The route has been canceled.");
 
     } else if (this.state.secondButtonText == DELETE_ROUTE_TEXT) {
-      alert("To be implemented.");
+      if (this.state.displayRoutesHighlightRow == -1) {
+        alert("Please select the route.");
+        return;
+      }
+      var file = ROUTES_FOLDER_PATH +
+                this.state.displayRoutesData[this.state.displayRoutesHighlightRow] +
+                ".json";
+      RNFS.unlink(file).then(() => {
+        RNFS.readdir(ROUTES_FOLDER_PATH)
+        .then((result) => {
+          var sortedResult = result.sort().map((a) => a.substring(0, a.length - 5));
+          this.setState({
+            displayRoutesHighlightRow: -1,
+            displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
+            displayRoutesData : sortedResult,
+          });
+          alert("Route deleted.");
+        }).catch((err) => {
+          console.log(err);
+          alert(err);
+        });
+      }).catch((err) => {
+        alert(err);
+      });
     }
   };
 
@@ -205,7 +228,31 @@ export default class AtlasClient extends Component {
         disableThirdButton : true,
       });
     } else if (this.state.thirdButtonText == LOAD_ROUTE_TEXT) {
-      alert("To be implemented.");
+      if (this.state.displayRoutesHighlightRow == -1) {
+        alert("Please select the route.");
+        return;
+      }
+      var file = ROUTES_FOLDER_PATH +
+                this.state.displayRoutesData[this.state.displayRoutesHighlightRow] +
+                ".json";
+      RNFS.readFile(file).then((content) => {
+        var obj = JSON.parse(content);
+        this.setState((prevState) => ({
+          displayedRoute : obj,
+          displayRoutes : false,
+          region : {
+              latitude : obj[0].latitude,
+              longitude : obj[0].longitude,
+              latitudeDelta : prevState.region.latitudeDelta,
+              longitudeDelta : prevState.region.longitudeDelta,
+          },
+          firstButtonText : DISPLAY_ROUTES_TEXT,
+          secondButtonText : MY_LOCATION_TEXT,
+          thirdButtonText : RECORD_ROUTE_TEXT,
+        }));
+      }).catch((err) => {
+        alert(err);
+      });
     }
   };
 
@@ -252,7 +299,6 @@ export default class AtlasClient extends Component {
   }
 
   onDisplayRouteRowPress(rowID) {
-    alert("Press " + rowID);
     this.setState({
       displayRoutesDataDs :  this.ds.cloneWithRows(this.state.displayRoutesData),
       displayRoutesHighlightRow : rowID,
