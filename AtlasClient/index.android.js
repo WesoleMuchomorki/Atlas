@@ -5,6 +5,7 @@ import
   Alert,
   AppRegistry,
   Button,
+  ListView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,11 +16,13 @@ import KeepAwake from 'react-native-keep-awake';
 
 var RNFS = require('react-native-fs');
 
-var DISPLAY_ROUTE_TEXT = 'Display route'
-var CANCEL_ROUTE_TEXT  = 'Cancel route';
-var RECORD_ROUTE_TEXT  = 'Record route';
-var SAVE_ROUTE_TEXT    = 'Save route';
-var MY_LOCATION_TEXT   = 'My location';
+var DISPLAY_ROUTES_TEXT = 'Display routes'
+var CANCEL_ROUTE_TEXT   = 'Cancel route';
+var RECORD_ROUTE_TEXT   = 'Record route';
+var SAVE_ROUTE_TEXT     = 'Save route';
+var MY_LOCATION_TEXT    = 'My location';
+var LOAD_ROUTE_TEXT     = 'Load route';
+var DELETE_ROUTE_TEXT   = 'Delete route';
 
 var ROUTES_FOLDER_PATH = RNFS.ExternalDirectoryPath + "/AtlasRoute/"
 
@@ -27,6 +30,7 @@ export default class AtlasClient extends Component {
 
   constructor(props) {
     super(props);
+    this.ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2 });
     this.state = {
       region : {
         latitude : 50.030521,
@@ -49,13 +53,17 @@ export default class AtlasClient extends Component {
         { latitude : 50.032054, longitude : 19.906918 },
         { latitude : 50.033033, longitude : 19.907637 },
       ],
-      firstButtonText : DISPLAY_ROUTE_TEXT,
+      firstButtonText : DISPLAY_ROUTES_TEXT,
       secondButtonText : MY_LOCATION_TEXT,
       thirdButtonText : RECORD_ROUTE_TEXT,
       loading : false,
       disableThirdButton : false,
       inputRouteName : false,
       routeNameTextInput : '',
+      displayRoutes : false,
+      displayRoutesDataDs : this.ds.cloneWithRows([]),
+      displayRoutesData : {},
+      displayRoutesHighlightRow : -1,
     };
     RNFS.mkdir(ROUTES_FOLDER_PATH)
     .then((result) => {
@@ -67,7 +75,33 @@ export default class AtlasClient extends Component {
   }
 
   onFirstButtonPress() {
-    Alert.alert('Display has been pressed!');
+    if (this.state.firstButtonText == DISPLAY_ROUTES_TEXT) {
+      RNFS.readdir(ROUTES_FOLDER_PATH)
+      .then((result) => {
+        var sortedResult = result.sort().map((a) => a.substring(0, a.length - 5));
+        this.setState({
+          displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
+          displayRoutesData : sortedResult,
+        });
+      }).catch((err) => {
+        console.log(err);
+        alert(err);
+      });
+      this.setState({
+        displayRoutes : true,
+        displayRoutesHighlightRow: -1,
+        firstButtonText : CANCEL_ROUTE_TEXT,
+        secondButtonText : DELETE_ROUTE_TEXT,
+        thirdButtonText : LOAD_ROUTE_TEXT,
+      });
+    } else if (this.state.firstButtonText == CANCEL_ROUTE_TEXT) {
+      this.setState({
+        displayRoutes : false,
+        firstButtonText : DISPLAY_ROUTES_TEXT,
+        secondButtonText : MY_LOCATION_TEXT,
+        thirdButtonText : RECORD_ROUTE_TEXT,
+      });
+    }
   };
 
   onSecondButttonPress() {
@@ -118,6 +152,8 @@ export default class AtlasClient extends Component {
       });
       alert("The route has been canceled.");
 
+    } else if (this.state.secondButtonText == DELETE_ROUTE_TEXT) {
+      alert("To be implemented.");
     }
   };
 
@@ -168,6 +204,8 @@ export default class AtlasClient extends Component {
         inputRouteName : true,
         disableThirdButton : true,
       });
+    } else if (this.state.thirdButtonText == LOAD_ROUTE_TEXT) {
+      alert("To be implemented.");
     }
   };
 
@@ -213,43 +251,73 @@ export default class AtlasClient extends Component {
     });
   }
 
+  onDisplayRouteRowPress(rowID) {
+    alert("Press " + rowID);
+    this.setState({
+      displayRoutesDataDs :  this.ds.cloneWithRows(this.state.displayRoutesData),
+      displayRoutesHighlightRow : rowID,
+    });
+  }
+
+  renderDisplayRouteRow(rowData, sectionID, rowID, highlightRow)
+  {
+    var s = styles.displayRoutesRow;
+    if (rowID == this.state.displayRoutesHighlightRow) {
+      s = styles.displayRoutesHighlightRow;
+    }
+    return (<Text style={s} onPress={() => {
+        this.onDisplayRouteRowPress(rowID);
+        highlightRow(sectionID, rowID);
+      }}>{rowData}</Text>);
+  }
+
   render() {
     return (
-      <View style={styles.main}>
-        <MapView style={styles.map} region={this.state.region} onRegionChange={this.onRegionChange.bind(this)} >
-          {this.state.userPosition.visible &&
-            <MapView.Marker coordinate={this.state.userPosition}/>
+        <View style={styles.main}>
+          <MapView style={styles.map} region={this.state.region} onRegionChange={this.onRegionChange.bind(this)} >
+            {this.state.userPosition.visible &&
+              <MapView.Marker coordinate={this.state.userPosition}/>
+            }
+            <MapView.Polyline coordinates={this.state.recordedRoute} strokeWidth={3} strokeColor='red'/>
+            <MapView.Polyline coordinates={this.state.displayedRoute} strokeWidth={3} strokeColor='blue'/>
+          </MapView>
+          <View />
+          {this.state.loading &&
+          <ActivityIndicator // there is bug in react-native : https ://stackoverflow.com/questions/38579665/reactnative-activityindicator-not-showing-when-animating-property-initiate-false
+            style={styles.indicator}
+            animating={true}
+            size="large"
+          />
           }
-          <MapView.Polyline coordinates={this.state.recordedRoute} strokeWidth={3} strokeColor='red'/>
-          <MapView.Polyline coordinates={this.state.displayedRoute} strokeWidth={3} strokeColor='blue'/>
-        </MapView>
-        <View />
-        {this.state.loading &&
-        <ActivityIndicator // there is bug in react-native : https ://stackoverflow.com/questions/38579665/reactnative-activityindicator-not-showing-when-animating-property-initiate-false
-          style={styles.indicator}
-          animating={true}
-          size="large"
-        />
-        }
-        {this.state.inputRouteName &&
-        <View style={styles.inputRouteName}>
-          <TextInput style={styles.inputRouteNameTextInput} onChangeText={this.onTextInputChange.bind(this)} />
-          <Button style={styles.inputRouteNameButtonCancel} title='Cancel' onPress={this.onInputRouteNameCancelPress.bind(this)} color='green' />
-          <Button style={styles.inputRouteNameButtonSave} title='Save' onPress={this.onInputRouteNameSavePress.bind(this)} color='green' />
-        </View>
-        }
-        <View style={styles.buttons}>
-          <Button title={this.state.firstButtonText} onPress={this.onFirstButtonPress.bind(this)} color='blue' disabled={this.state.loading} />
-          <Button title={this.state.secondButtonText} onPress={this.onSecondButttonPress.bind(this)} color='green' disabled={this.state.loading} />
-          <Button title={this.state.thirdButtonText} onPress={this.onThirdButtonPress.bind(this)} color='red' disabled={this.state.loading || this.state.disableThirdButton } />
-        </View>
-        <KeepAwake/>
-      </View>
-    );
+          {this.state.displayRoutes &&
+          <View style={styles.displayRoutes}>
+            <ListView style={styles.displayRoutesListView}
+              dataSource={this.state.displayRoutesDataDs}
+              renderRow={this.renderDisplayRouteRow.bind(this)}
+              enableEmptySections={true}
+             />
+          </View>}
+          {this.state.inputRouteName &&
+          <View style={styles.inputRouteName}>
+            <TextInput style={styles.inputRouteNameTextInput} onChangeText={this.onTextInputChange.bind(this)} />
+            <Button style={styles.inputRouteNameButtonCancel} title='Cancel' onPress={this.onInputRouteNameCancelPress.bind(this)} color='green' />
+            <Button style={styles.inputRouteNameButtonSave} title='Save' onPress={this.onInputRouteNameSavePress.bind(this)} color='green' />
+          </View>
+          }
+          <View style={styles.buttons}>
+            <Button title={this.state.firstButtonText} onPress={this.onFirstButtonPress.bind(this)} color='blue' disabled={this.state.loading} />
+            <Button title={this.state.secondButtonText} onPress={this.onSecondButttonPress.bind(this)} color='green' disabled={this.state.loading} />
+            <Button title={this.state.thirdButtonText} onPress={this.onThirdButtonPress.bind(this)} color='red' disabled={this.state.loading || this.state.disableThirdButton } />
+          </View>
+          <KeepAwake/>
+        </View>);
   }
 }
 
 const styles = StyleSheet.create({
+  global : {
+    flex : 1,
+  },
   main : {
     flex : 1,
     justifyContent : 'space-between',
@@ -281,6 +349,18 @@ const styles = StyleSheet.create({
   inputRouteNameTextInput : {
     borderWidth : 0,
     width : 160,
+  },
+  displayRoutes : {
+    backgroundColor : 'white',
+    flexDirection : 'column',
+    justifyContent : 'center',
+  },
+  displayRoutesRow : {
+    padding: 10,
+  },
+  displayRoutesHighlightRow : {
+    padding: 10,
+    fontWeight: 'bold',
   }
 });
 
