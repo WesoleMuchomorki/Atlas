@@ -78,7 +78,7 @@ export default class AtlasClient extends Component {
           alert("No routes to display.");
           return;
         }
-        var sortedResult = this.helperSortAndStip(result);
+        var sortedResult = this.helperSortAndStrip(result);
         this.setState({
           displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
           displayRoutesData : sortedResult,
@@ -165,7 +165,7 @@ export default class AtlasClient extends Component {
             });
             return;
           }
-          var sortedResult = this.helperSortAndStip(result);
+          var sortedResult = this.helperSortAndStrip(result);
           this.setState({
             displayRoutesHighlightRow: -1,
             displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
@@ -348,7 +348,7 @@ export default class AtlasClient extends Component {
     return input;
   }
 
-  helperSortAndStip(input) {
+  helperSortAndStrip(input) {
     return input.sort().map((a) => a.substring(0, a.length - JSON_EXT.length));
   }
 
