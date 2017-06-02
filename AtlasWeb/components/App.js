@@ -23,9 +23,9 @@ var App = React.createClass({
 
 			<div>
 			
-				<img src='logo.png' alt='logo' width="96" height="96"/>
+				<img src='logo.png' alt='logo' width='439' height='100'/>
 				
-				<h1>Atlas</h1>
+				<h1></h1>
 
 				<Map lat={this.state.mapCoordinates.lat} lng={this.state.mapCoordinates.lng} />
 
