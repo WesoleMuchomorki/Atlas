@@ -1,0 +1,35 @@
+.container {
+	max-width: 980px;
+	text-align: center;
+	margin: 20px auto;
+}
+
+h1 {
+	margin-bottom: 20px;
+}
+
+.map-holder {
+	max-width: 500px;
+	height: 350px;
+	margin: 0 auto;
+	background-color: #FCFCFC;
+	position: relative;
+	border-radius: 2px;
+}
+
+.map-holder p {
+	position: absolute;
+	width: 84px;
+	height: 22px;
+	left: 50%;
+	top: 50%;
+	margin: -11px auto 0 -42px;
+	font-size: 20px;
+	color: #969FA8;
+}
+
+#map {
+	max-width: 500px;
+	height: 350px;
+	margin: 0 auto;
+}
