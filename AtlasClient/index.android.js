@@ -26,7 +26,8 @@ var DELETE_ROUTE_TEXT   = 'Delete route';
 
 var JSON_EXT = ".json";
 
-var ROUTES_FOLDER_PATH = RNFS.ExternalDirectoryPath + "/AtlasRoute/"
+var ROUTES_FOLDER_PATH = RNFS.ExternalDirectoryPath + "/AtlasRoute/";
+var MAIN_SETTINGS_PATH = RNFS.ExternalDirectoryPath + "/AtlasMain.json";
 
 export default class AtlasClient extends Component {
   constructor(props) {
