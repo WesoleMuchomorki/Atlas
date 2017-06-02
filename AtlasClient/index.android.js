@@ -24,10 +24,11 @@ var MY_LOCATION_TEXT    = 'My location';
 var LOAD_ROUTE_TEXT     = 'Load route';
 var DELETE_ROUTE_TEXT   = 'Delete route';
 
+var JSON_EXT = ".json";
+
 var ROUTES_FOLDER_PATH = RNFS.ExternalDirectoryPath + "/AtlasRoute/"
 
 export default class AtlasClient extends Component {
-
   constructor(props) {
     super(props);
     this.ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2 });
@@ -45,14 +46,7 @@ export default class AtlasClient extends Component {
       },
       recordedRoute :
       [],
-      displayedRoute : [
-        { latitude : 50.030303, longitude : 19.907702 },
-        { latitude : 50.031696, longitude : 19.909246 },
-        { latitude : 50.031848, longitude : 19.908924 },
-        { latitude : 50.031703, longitude : 19.908291 },
-        { latitude : 50.032054, longitude : 19.906918 },
-        { latitude : 50.033033, longitude : 19.907637 },
-      ],
+      displayedRoute : [],
       firstButtonText : DISPLAY_ROUTES_TEXT,
       secondButtonText : MY_LOCATION_TEXT,
       thirdButtonText : RECORD_ROUTE_TEXT,
@@ -70,6 +64,7 @@ export default class AtlasClient extends Component {
       console.info("Folder " + ROUTES_FOLDER_PATH + " succesfully created.");
     })
     .catch((err) => {
+      alert(err);
       console.log(err);
     })
   }
@@ -78,21 +73,23 @@ export default class AtlasClient extends Component {
     if (this.state.firstButtonText == DISPLAY_ROUTES_TEXT) {
       RNFS.readdir(ROUTES_FOLDER_PATH)
       .then((result) => {
-        var sortedResult = result.sort().map((a) => a.substring(0, a.length - 5));
+        if (result.length == 0) {
+          alert("No routes to display.");
+          return;
+        }
+        var sortedResult = this.helperSortAndStip(result);
         this.setState({
           displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
           displayRoutesData : sortedResult,
+          displayRoutes : true,
+          displayRoutesHighlightRow: -1,
+          firstButtonText : CANCEL_ROUTE_TEXT,
+          secondButtonText : DELETE_ROUTE_TEXT,
+          thirdButtonText : LOAD_ROUTE_TEXT,
         });
       }).catch((err) => {
         console.log(err);
         alert(err);
-      });
-      this.setState({
-        displayRoutes : true,
-        displayRoutesHighlightRow: -1,
-        firstButtonText : CANCEL_ROUTE_TEXT,
-        secondButtonText : DELETE_ROUTE_TEXT,
-        thirdButtonText : LOAD_ROUTE_TEXT,
       });
     } else if (this.state.firstButtonText == CANCEL_ROUTE_TEXT) {
       this.setState({
@@ -108,10 +105,6 @@ export default class AtlasClient extends Component {
     if (this.state.secondButtonText == MY_LOCATION_TEXT) {
       this.setState({
         loading : true,
-        userPosition :
-        {
-          visible : false,
-        }
       });
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -151,7 +144,6 @@ export default class AtlasClient extends Component {
           inputRouteName : false,
       });
       alert("The route has been canceled.");
-
     } else if (this.state.secondButtonText == DELETE_ROUTE_TEXT) {
       if (this.state.displayRoutesHighlightRow == -1) {
         alert("Please select the route.");
@@ -159,11 +151,20 @@ export default class AtlasClient extends Component {
       }
       var file = ROUTES_FOLDER_PATH +
                 this.state.displayRoutesData[this.state.displayRoutesHighlightRow] +
-                ".json";
+                JSON_EXT;
       RNFS.unlink(file).then(() => {
         RNFS.readdir(ROUTES_FOLDER_PATH)
         .then((result) => {
-          var sortedResult = result.sort().map((a) => a.substring(0, a.length - 5));
+          if (result.length == 0) {
+            this.setState({
+              displayRoutes : false,
+              firstButtonText : DISPLAY_ROUTES_TEXT,
+              secondButtonText : MY_LOCATION_TEXT,
+              thirdButtonText : RECORD_ROUTE_TEXT,
+            });
+            return;
+          }
+          var sortedResult = this.helperSortAndStip(result);
           this.setState({
             displayRoutesHighlightRow: -1,
             displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
@@ -234,7 +235,7 @@ export default class AtlasClient extends Component {
       }
       var file = ROUTES_FOLDER_PATH +
                 this.state.displayRoutesData[this.state.displayRoutesHighlightRow] +
-                ".json";
+                JSON_EXT;
       RNFS.readFile(file).then((content) => {
         var obj = JSON.parse(content);
         this.setState((prevState) => ({
@@ -252,29 +253,46 @@ export default class AtlasClient extends Component {
         }));
       }).catch((err) => {
         alert(err);
+        console.log(err);
       });
     }
   };
 
   onInputRouteNameSavePress(){
-    navigator.geolocation.clearWatch(this.watchID);
-    this.setState({
-        inputRouteName : false,
-        thirdButtonText : RECORD_ROUTE_TEXT,
-        secondButtonText : MY_LOCATION_TEXT,
-        disableThirdButton : false,
-        userPosition :
-        {
-          visible : false,
-        },
-    });
-    var path = ROUTES_FOLDER_PATH + this.state.routeNameTextInput + " .json";
-    RNFS.writeFile(path, JSON.stringify(this.state.recordedRoute), 'utf8')
-    .then((success) => {
-      alert('The route has been saved.');
+    var input = this.helperStrip(this.state.routeNameTextInput);
+    if (input.length == 0) {
+      alert("Please input the name of the route.");
+      return;
+    }
+    var path = ROUTES_FOLDER_PATH + this.state.routeNameTextInput + JSON_EXT;
+    RNFS.exists(path)
+    .then((result) => {
+      if (result == false) {
+        navigator.geolocation.clearWatch(this.watchID);
+        this.setState({
+            inputRouteName : false,
+            thirdButtonText : RECORD_ROUTE_TEXT,
+            secondButtonText : MY_LOCATION_TEXT,
+            disableThirdButton : false,
+            userPosition :
+            {
+              visible : false,
+            },
+        });
+        RNFS.writeFile(path, JSON.stringify(this.state.recordedRoute), 'utf8')
+        .then((success) => {
+          alert('The route has been saved.');
+        })
+        .catch((err) => {
+          alert(err);
+          console.log(err);
+        });
+      } else {
+        alert("Route with this name already exists, please input different name.");
+      }
     })
     .catch((err) => {
-      alert('Unble to save the route.');
+      alert(err);
       console.log(err);
     });
   }
@@ -305,8 +323,7 @@ export default class AtlasClient extends Component {
     });
   }
 
-  renderDisplayRouteRow(rowData, sectionID, rowID, highlightRow)
-  {
+  renderDisplayRouteRow(rowData, sectionID, rowID, highlightRow) {
     var s = styles.displayRoutesRow;
     if (rowID == this.state.displayRoutesHighlightRow) {
       s = styles.displayRoutesHighlightRow;
@@ -315,6 +332,23 @@ export default class AtlasClient extends Component {
         this.onDisplayRouteRowPress(rowID);
         highlightRow(sectionID, rowID);
       }}>{rowData}</Text>);
+  }
+
+  helperStrip(input) {
+    if (input.length == 0) {
+      return input;
+    }
+    if (input[0] == ' ') {
+      return this.helperStrip(input.substring(1, input.length));
+    }
+    if (input[input.length-1] == ' ') {
+      return this.helperStrip(input.substring(0, input.length-1));
+    }
+    return input;
+  }
+
+  helperSortAndStip(input) {
+    return input.sort().map((a) => a.substring(0, a.length - JSON_EXT.length));
   }
 
   render() {
