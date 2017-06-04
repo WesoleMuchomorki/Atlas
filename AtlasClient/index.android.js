@@ -29,6 +29,56 @@ var JSON_EXT = ".json";
 var ROUTES_FOLDER_PATH = RNFS.ExternalDirectoryPath + "/AtlasRoute/";
 var MAIN_SETTINGS_PATH = RNFS.ExternalDirectoryPath + "/AtlasMain.json";
 
+var SERVER_URL = "http://10.0.2.2:8000/";
+
+class DisplayRouteRowSyncButton extends Component {
+  uploadRoute() {
+    routeName = this.props.routeName
+    url = SERVER_URL + "routes/" + routeName
+    console.log("sync route: " + url)
+    var file = ROUTES_FOLDER_PATH +
+                routeName +
+                JSON_EXT;
+
+    RNFS.readFile(file).then((content) => {
+      fetch(url, {
+        method: "PUT",
+        body: content
+      }).then((response) => {
+        if (response.ok == true) {
+          alert("Route uploaded successfully")
+        } else {
+          alert("Failed to upload route")
+          console.log(response)
+        }
+      }).catch((err) => {
+        alert(err);
+        console.log(err);
+      });
+    }).catch((err) => {
+      alert(err);
+      console.log(err);
+    });
+
+    return fetch('https://facebook.github.io/react-native/movies.json')
+      .then((response) => response.json())
+      .then((responseJson) => {
+        return responseJson.movies;
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+
+  handlePress() {
+    this.uploadRoute()
+  }
+
+  render() {
+    return (<Button title="Upload" onPress={this.handlePress.bind(this)} />)
+  }
+}
+
 export default class AtlasClient extends Component {
   constructor(props) {
     super(props);
@@ -329,10 +379,15 @@ export default class AtlasClient extends Component {
     if (rowID == this.state.displayRoutesHighlightRow) {
       s = styles.displayRoutesHighlightRow;
     }
-    return (<Text style={s} onPress={() => {
-        this.onDisplayRouteRowPress(rowID);
-        highlightRow(sectionID, rowID);
-      }}>{rowData}</Text>);
+    return (<View>
+        <Text style={s}
+            onPress={() => {
+              this.onDisplayRouteRowPress(rowID);
+              highlightRow(sectionID, rowID);
+            }}
+        >{rowData}</Text>
+        <DisplayRouteRowSyncButton routeName={rowData}/>
+      </View>);
   }
 
   helperStrip(input) {
@@ -446,3 +501,5 @@ const styles = StyleSheet.create({
 });
 
 AppRegistry.registerComponent('AtlasClient', () => AtlasClient);
+
+// vim: ts=2:sw=2:et:ai
