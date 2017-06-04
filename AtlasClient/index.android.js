@@ -4,6 +4,7 @@ import
   ActivityIndicator,
   Alert,
   AppRegistry,
+  BackAndroid,
   Button,
   ListView,
   StyleSheet,
@@ -27,7 +28,8 @@ var DELETE_ROUTE_TEXT   = 'Delete route';
 var JSON_EXT = ".json";
 
 var ROUTES_FOLDER_PATH = RNFS.ExternalDirectoryPath + "/AtlasRoute/";
-var MAIN_SETTINGS_PATH = RNFS.ExternalDirectoryPath + "/AtlasMain.json";
+var MAIN_SETTINGS_PATH = RNFS.ExternalDirectoryPath + "/AtlasMain" + JSON_EXT;
+var LAST_LOCATION_PATH = RNFS.ExternalDirectoryPath + "/LastLocation" + JSON_EXT;
 
 export default class AtlasClient extends Component {
   constructor(props) {
@@ -45,8 +47,7 @@ export default class AtlasClient extends Component {
         latitude : 50.030521,
         longitude : 19.907176,
       },
-      recordedRoute :
-      [],
+      recordedRoute : [],
       displayedRoute : [],
       firstButtonText : DISPLAY_ROUTES_TEXT,
       secondButtonText : MY_LOCATION_TEXT,
@@ -60,6 +61,9 @@ export default class AtlasClient extends Component {
       displayRoutesData : {},
       displayRoutesHighlightRow : -1,
     };
+  }
+
+  componentWillMount() {
     RNFS.mkdir(ROUTES_FOLDER_PATH)
     .then((result) => {
       console.info("Folder " + ROUTES_FOLDER_PATH + " succesfully created.");
@@ -67,7 +71,44 @@ export default class AtlasClient extends Component {
     .catch((err) => {
       alert(err);
       console.log(err);
+    });
+    RNFS.exists(LAST_LOCATION_PATH)
+    .then((result) => {
+      if (result) {
+        RNFS.readFile(LAST_LOCATION_PATH).then((content) => {
+          var obj = JSON.parse(content);
+          console.log(obj);
+          this.setState((prevState) => ({
+            region : obj.region,
+            userPosition : obj.userPosition,
+            displayedRoute : obj.displayedRoute,
+          }));
+        }).catch((err) => {
+          console.log(err);
+        });
+      }
     })
+    .catch((err) => {
+      console.log(err);
+    });
+  }
+
+  componentDidMount() {
+    BackAndroid.addEventListener("hardwareBackPress", () => {
+      var lastLocation = {
+        region : this.state.region,
+        userPosition : this.state.userPosition,
+        displayedRoute : this.state.displayedRoute,
+      };
+      RNFS.writeFile(LAST_LOCATION_PATH, JSON.stringify(lastLocation), 'utf8')
+      .then((success) => {
+        console.log('The last location has been saved.');
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+      return false;
+    });
   }
 
   onFirstButtonPress() {
@@ -85,8 +126,8 @@ export default class AtlasClient extends Component {
           displayRoutes : true,
           displayRoutesHighlightRow: -1,
           firstButtonText : CANCEL_ROUTE_TEXT,
-          secondButtonText : DELETE_ROUTE_TEXT,
-          thirdButtonText : LOAD_ROUTE_TEXT,
+          secondButtonText : LOAD_ROUTE_TEXT,
+          thirdButtonText : DELETE_ROUTE_TEXT,
         });
       }).catch((err) => {
         console.log(err);
@@ -145,7 +186,7 @@ export default class AtlasClient extends Component {
           inputRouteName : false,
       });
       alert("The route has been canceled.");
-    } else if (this.state.secondButtonText == DELETE_ROUTE_TEXT) {
+    } else if (this.state.secondButtonText == LOAD_ROUTE_TEXT) {
       if (this.state.displayRoutesHighlightRow == -1) {
         alert("Please select the route.");
         return;
@@ -153,31 +194,24 @@ export default class AtlasClient extends Component {
       var file = ROUTES_FOLDER_PATH +
                 this.state.displayRoutesData[this.state.displayRoutesHighlightRow] +
                 JSON_EXT;
-      RNFS.unlink(file).then(() => {
-        RNFS.readdir(ROUTES_FOLDER_PATH)
-        .then((result) => {
-          if (result.length == 0) {
-            this.setState({
-              displayRoutes : false,
-              firstButtonText : DISPLAY_ROUTES_TEXT,
-              secondButtonText : MY_LOCATION_TEXT,
-              thirdButtonText : RECORD_ROUTE_TEXT,
-            });
-            return;
-          }
-          var sortedResult = this.helperSortAndStrip(result);
-          this.setState({
-            displayRoutesHighlightRow: -1,
-            displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
-            displayRoutesData : sortedResult,
-          });
-          alert("Route deleted.");
-        }).catch((err) => {
-          console.log(err);
-          alert(err);
-        });
+      RNFS.readFile(file).then((content) => {
+        var obj = JSON.parse(content);
+        this.setState((prevState) => ({
+          displayedRoute : obj,
+          displayRoutes : false,
+          region : {
+              latitude : obj[0].latitude,
+              longitude : obj[0].longitude,
+              latitudeDelta : prevState.region.latitudeDelta,
+              longitudeDelta : prevState.region.longitudeDelta,
+          },
+          firstButtonText : DISPLAY_ROUTES_TEXT,
+          secondButtonText : MY_LOCATION_TEXT,
+          thirdButtonText : RECORD_ROUTE_TEXT,
+        }));
       }).catch((err) => {
         alert(err);
+        console.log(err);
       });
     }
   };
@@ -213,6 +247,7 @@ export default class AtlasClient extends Component {
               visible : true,
             },
             loading : false,
+            displayedRoute : [],
             recordedRoute : newRecordedRoute,
           }));
         },
@@ -224,12 +259,12 @@ export default class AtlasClient extends Component {
         },
         {enableHighAccuracy : true, timeout : 20000, maximumAge : 1000, distanceFilter : 3}
       );
-    } else if (this.state.thirdButtonText == SAVE_ROUTE_TEXT){
+    } else if (this.state.thirdButtonText == SAVE_ROUTE_TEXT) {
       this.setState({
         inputRouteName : true,
         disableThirdButton : true,
       });
-    } else if (this.state.thirdButtonText == LOAD_ROUTE_TEXT) {
+    } else if (this.state.thirdButtonText == DELETE_ROUTE_TEXT) {
       if (this.state.displayRoutesHighlightRow == -1) {
         alert("Please select the route.");
         return;
@@ -237,24 +272,31 @@ export default class AtlasClient extends Component {
       var file = ROUTES_FOLDER_PATH +
                 this.state.displayRoutesData[this.state.displayRoutesHighlightRow] +
                 JSON_EXT;
-      RNFS.readFile(file).then((content) => {
-        var obj = JSON.parse(content);
-        this.setState((prevState) => ({
-          displayedRoute : obj,
-          displayRoutes : false,
-          region : {
-              latitude : obj[0].latitude,
-              longitude : obj[0].longitude,
-              latitudeDelta : prevState.region.latitudeDelta,
-              longitudeDelta : prevState.region.longitudeDelta,
-          },
-          firstButtonText : DISPLAY_ROUTES_TEXT,
-          secondButtonText : MY_LOCATION_TEXT,
-          thirdButtonText : RECORD_ROUTE_TEXT,
-        }));
+      RNFS.unlink(file).then(() => {
+        RNFS.readdir(ROUTES_FOLDER_PATH)
+        .then((result) => {
+          if (result.length == 0) {
+            this.setState({
+              displayRoutes : false,
+              firstButtonText : DISPLAY_ROUTES_TEXT,
+              secondButtonText : MY_LOCATION_TEXT,
+              thirdButtonText : RECORD_ROUTE_TEXT,
+            });
+            return;
+          }
+          var sortedResult = this.helperSortAndStrip(result);
+          this.setState({
+            displayRoutesHighlightRow: -1,
+            displayRoutesDataDs : this.ds.cloneWithRows(sortedResult),
+            displayRoutesData : sortedResult,
+          });
+          alert("Route deleted.");
+        }).catch((err) => {
+          console.log(err);
+          alert(err);
+        });
       }).catch((err) => {
         alert(err);
-        console.log(err);
       });
     }
   };
