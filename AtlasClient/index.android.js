@@ -9,6 +9,7 @@ import
   StyleSheet,
   Text,
   TextInput,
+  TouchableHighlight,
   View
 } from 'react-native';
 import MapView from 'react-native-maps';
@@ -42,19 +43,21 @@ class DisplayRouteRowSyncButton extends Component {
 
     RNFS.readFile(file).then((content) => {
       fetch(url, {
-        method: "PUT",
-        body: content
-      }).then((response) => {
-        if (response.ok == true) {
-          alert("Route uploaded successfully")
-        } else {
-          alert("Failed to upload route")
-          console.log(response)
-        }
-      }).catch((err) => {
-        alert(err);
-        console.log(err);
-      });
+          method: "PUT",
+          body: content
+        })
+        .then((response) => {
+          if (response.ok == true) {
+            alert("Route uploaded successfully")
+          } else {
+            alert("Failed to upload route")
+            console.log(response)
+          }
+        })
+        .catch((err) => {
+          alert(err);
+          console.log(err);
+        })
     }).catch((err) => {
       alert(err);
       console.log(err);
@@ -76,6 +79,85 @@ class DisplayRouteRowSyncButton extends Component {
 
   render() {
     return (<Button title="Upload" onPress={this.handlePress.bind(this)} />)
+  }
+}
+
+class ServerRoutesListView extends Component {
+  constructor(props) {
+    super(props)
+    const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+
+    this.state = {
+      empty: true,
+      dataSource: ds.cloneWithRows([]),
+    };
+  }
+
+  componentWillMount() {
+    const url = SERVER_URL + "routes/"
+    fetch(url, {
+        method: "GET"
+      })
+      .then((response) => response.json())
+      .then((responseJson) => responseJson.map((name) => SERVER_URL + "routes/" + name))
+      .then((responseJson) => {
+        console.log(responseJson)
+
+        var empty = false
+        if (responseJson.length == 0) {
+          empty = true
+        }
+
+        this.setState({
+          dataSource: this.state.dataSource.cloneWithRows(responseJson),
+          empty: empty
+        })
+      })
+      .catch((err) => {
+        alert(err);
+        console.log(err);
+      });
+  }
+
+  render() {
+    if (this.state.empty) {
+      return (<Text>No server routes</Text>)
+    } else {
+      return (<ListView dataSource={this.state.dataSource} renderRow={this._renderRow.bind(this)} />)
+    }
+  }
+
+  _renderRow(rowData, sectionID, rowID, highlightRow) {
+    return (
+      <TouchableHighlight
+          onPress={
+            () => {
+              this._setRoute(rowData)
+              highlightRow(sectionID, rowID)
+            }
+          }
+      >
+        <Text>
+          {rowData}
+        </Text>
+      </TouchableHighlight>
+    )
+  }
+
+  _setRoute(uri) {
+    fetch(uri, {
+        method: "GET"
+      })
+      .then((response) => response.json())
+      .then((responseJson) => {
+        this.props.setRoute(responseJson)
+        console.log(responseJson)
+      })
+      .catch((err) => {
+        alert(err);
+        console.log(err);
+      })
+
   }
 }
 
@@ -289,19 +371,7 @@ export default class AtlasClient extends Component {
                 JSON_EXT;
       RNFS.readFile(file).then((content) => {
         var obj = JSON.parse(content);
-        this.setState((prevState) => ({
-          displayedRoute : obj,
-          displayRoutes : false,
-          region : {
-              latitude : obj[0].latitude,
-              longitude : obj[0].longitude,
-              latitudeDelta : prevState.region.latitudeDelta,
-              longitudeDelta : prevState.region.longitudeDelta,
-          },
-          firstButtonText : DISPLAY_ROUTES_TEXT,
-          secondButtonText : MY_LOCATION_TEXT,
-          thirdButtonText : RECORD_ROUTE_TEXT,
-        }));
+        this.setRoute(obj)
       }).catch((err) => {
         alert(err);
         console.log(err);
@@ -374,6 +444,22 @@ export default class AtlasClient extends Component {
     });
   }
 
+  setRoute(obj) {
+    this.setState((prevState) => ({
+      displayedRoute : obj,
+      displayRoutes : false,
+      region : {
+          latitude : obj[0].latitude,
+          longitude : obj[0].longitude,
+          latitudeDelta : prevState.region.latitudeDelta,
+          longitudeDelta : prevState.region.longitudeDelta,
+      },
+      firstButtonText : DISPLAY_ROUTES_TEXT,
+      secondButtonText : MY_LOCATION_TEXT,
+      thirdButtonText : RECORD_ROUTE_TEXT,
+    }));
+  }
+
   renderDisplayRouteRow(rowData, sectionID, rowID, highlightRow) {
     var s = styles.displayRoutesRow;
     if (rowID == this.state.displayRoutesHighlightRow) {
@@ -432,6 +518,7 @@ export default class AtlasClient extends Component {
               renderRow={this.renderDisplayRouteRow.bind(this)}
               enableEmptySections={true}
              />
+            <ServerRoutesListView setRoute={this.setRoute.bind(this)} />
           </View>}
           {this.state.inputRouteName &&
           <View style={styles.inputRouteName}>

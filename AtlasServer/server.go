@@ -45,6 +45,12 @@ func getRoute(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "[{\"latitude\":50.050,\"longitude\":19.936},{\"latitude\":50.053,\"longitude\":19.937},{\"latitude\":50.055,\"longitude\":19.934},{\"latitude\":50.061,\"longitude\":19.932},{\"latitude\":50.064,\"longitude\":19.931},{\"latitude\":50.068,\"longitude\":19.926},{\"latitude\":50.071,\"longitude\":19.920}]")
 }
 
+func getRouteList(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	// XXX placeholder
+	fmt.Fprintf(w, "[\"placeholder 1\",\"placeholder_2\"]")
+}
+
 //
 // Main
 //
@@ -57,6 +63,7 @@ func main() {
 	r.HandleFunc("/", index).Methods("GET")
 	r.HandleFunc("/routes/{id}", putRoute).Methods("PUT")
 	r.HandleFunc("/routes/{id}", getRoute).Methods("GET")
+	r.HandleFunc("/routes/", getRouteList).Methods("GET")
 	http.ListenAndServe(":8000", r)
 
 	db.Close()
