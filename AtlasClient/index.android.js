@@ -4,7 +4,7 @@ import
   ActivityIndicator,
   Alert,
   AppRegistry,
-  BackAndroid,
+  AppState,
   Button,
   ListView,
   StyleSheet,
@@ -94,15 +94,20 @@ export default class AtlasClient extends Component {
   }
 
   componentDidMount() {
-    this.backButtonListener = this.saveLastLocationHandler.bind(this);
-    BackAndroid.addEventListener("hardwareBackPress", this.backButtonListener);
+    AppState.addEventListener("change", this.appStateChangeHandler);
   }
 
   componentWillUnmount() {
-    BackAndroid.removeEventListener("hardwareBackPress", this.backButtonListener);
+    AppState.removeEventListener("change", this.appStateChangeHandler);
   }
 
-  saveLastLocationHandler(e) {
+  appStateChangeHandler = (nextAppState) => {
+    if (nextAppState === 'background' || nextAppState === 'inactive') {
+      this.saveLastLocation();
+    }
+  }
+
+  saveLastLocation() {
     var lastLocation = {
       region : this.state.region,
       userPosition : this.state.userPosition,
@@ -115,7 +120,6 @@ export default class AtlasClient extends Component {
     .catch((err) => {
       console.log(err);
     });
-    return false;
   }
 
   onFirstButtonPress() {
