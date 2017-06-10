@@ -94,21 +94,28 @@ export default class AtlasClient extends Component {
   }
 
   componentDidMount() {
-    BackAndroid.addEventListener("hardwareBackPress", () => {
-      var lastLocation = {
-        region : this.state.region,
-        userPosition : this.state.userPosition,
-        displayedRoute : this.state.displayedRoute,
-      };
-      RNFS.writeFile(LAST_LOCATION_PATH, JSON.stringify(lastLocation), 'utf8')
-      .then((success) => {
-        console.log('The last location has been saved.');
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-      return false;
+    this.backButtonListener = this.saveLastLocationHandler.bind(this);
+    BackAndroid.addEventListener("hardwareBackPress", this.backButtonListener);
+  }
+
+  componentWillUnmount() {
+    BackAndroid.removeEventListener("hardwareBackPress", this.backButtonListener);
+  }
+
+  saveLastLocationHandler(e) {
+    var lastLocation = {
+      region : this.state.region,
+      userPosition : this.state.userPosition,
+      displayedRoute : this.state.displayedRoute,
+    };
+    RNFS.writeFile(LAST_LOCATION_PATH, JSON.stringify(lastLocation), 'utf8')
+    .then((success) => {
+      console.log('The last location has been saved.');
+    })
+    .catch((err) => {
+      console.log(err);
     });
+    return false;
   }
 
   onFirstButtonPress() {
