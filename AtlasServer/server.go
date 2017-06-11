@@ -1,12 +1,12 @@
 package main
 
 import (
-	_ "github.com/go-sql-driver/mysql"
 	"database/sql"
-	//	"fmt"
-	"io"
+	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
+	"io/ioutil"
 	"net/http"
-	"strconv"
 )
 
 //
@@ -23,49 +23,32 @@ func checkErr(err error) {
 // Switch
 //
 
-func handler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func index(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "It works!\n")
+}
 
-	switch r.URL.Query().Get("action") {
+func putRoute(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	w.WriteHeader(http.StatusOK)
+	data, _ := ioutil.ReadAll(r.Body)
+	data_str := string(data)
+	fmt.Printf("put route: %v\n", vars["id"])
+	fmt.Println("-------- BEGIN DATA --------")
+	fmt.Println(data_str)
+	fmt.Println("-------- END DATA --------")
+}
 
-	case "list" :
-		rows, err := db.Query("SELECT id, name FROM trips")
+func getRoute(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	// XXX placeholder
+	fmt.Fprintf(w, "[{\"latitude\":50.050,\"longitude\":19.936},{\"latitude\":50.053,\"longitude\":19.937},{\"latitude\":50.055,\"longitude\":19.934},{\"latitude\":50.061,\"longitude\":19.932},{\"latitude\":50.064,\"longitude\":19.931},{\"latitude\":50.068,\"longitude\":19.926},{\"latitude\":50.071,\"longitude\":19.920}]")
+}
 
-		checkErr(err)
-
-		for rows.Next() {
-			var trip_id int
-			var name string
-
-			err = rows.Scan(&trip_id, &name)
-			checkErr(err)
-
-			io.WriteString(w, strconv.Itoa(trip_id) + " " + name + "\n")
-		}
-
-		break;
-
-	case "get_trip" :
-		trip_id := r.URL.Query().Get("trip_id")
-
-		rows, err := db.Query("SELECT ord, x, y FROM points WHERE trip_id = " + trip_id)
-
-		checkErr(err)
-
-		for rows.Next() {
-			var ord int
-			var x float64
-			var y float64
-
-			err = rows.Scan(&ord, &x, &y)
-			checkErr(err)
-
-			str_ord := strconv.Itoa(ord)
-			str_x := strconv.FormatFloat(x, 'f', 8, 64)
-			str_y := strconv.FormatFloat(y, 'f', 8, 64)
-
-			io.WriteString(w, str_ord + " " + str_x + " " + str_y + "\n")
-		}
-	}
+func getRouteList(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	// XXX placeholder
+	fmt.Fprintf(w, "[\"placeholder 1\",\"placeholder_2\"]")
 }
 
 //
@@ -76,9 +59,14 @@ func main() {
 	db, err := sql.Open("mysql", "muchomorek:WesoleMuchomorki256@tcp(85.10.205.173:3306)/muchomorek?charset=utf8")
 	checkErr(err)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {handler(db,w,r)})
-	http.ListenAndServe(":8000", nil)
+	r := mux.NewRouter()
+	r.HandleFunc("/", index).Methods("GET")
+	r.HandleFunc("/routes/{id}", putRoute).Methods("PUT")
+	r.HandleFunc("/routes/{id}", getRoute).Methods("GET")
+	r.HandleFunc("/routes/", getRouteList).Methods("GET")
+	http.ListenAndServe(":8000", r)
 
 	db.Close()
 }
 
+// vim: noet
