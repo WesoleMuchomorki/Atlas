@@ -33,3 +33,43 @@ h1 {
 	height: 350px;
 	margin: 0 auto;
 }
+
+.glyphicon {
+	font-size: 18px;
+	z-index: 20;
+	cursor: pointer;
+}
+
+.glyphicon-menu-right {
+	position: absolute;
+	top: 50%;
+	right: 10px;
+	margin-top: -9px;
+}
+
+.list-group {
+	padding: 0 15px;
+	margin-top: 50px;
+}
+
+.list-group-item {
+	position: relative;
+	padding: 10px 20px;
+}
+
+.list-group-item {
+	cursor: pointer;
+}
+
+.list-group-item:hover {
+	background-color: #F7FBFF;
+}
+
+.active-location {
+	background-color: #EEF6FF;
+}
+
+.active-location:hover {
+	background-color: #EBF3FC;
+}
+

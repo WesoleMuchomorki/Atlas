@@ -8,13 +8,14 @@ var Map = React.createClass({
 
 	componentDidUpdate(){
 
-		if(this.lastLat == this.props.lat && this.lastLng == this.props.lng){
+		if(this.lastLat == this.props.lat && this.lastLng == this.props.lng && this.lastRoute == this.props.route){
 
 			return;
 		}
 
 		this.lastLat = this.props.lat;
 		this.lastLng = this.props.lng
+		this.lastRoute = this.props.route;
 
 		var map = new GMaps({
 			el: '#map',
@@ -22,21 +23,13 @@ var Map = React.createClass({
 			lng: this.props.lng
 		});
 		
-		map.addMarker({
+		/*map.addMarker({
 			lat: this.props.lat,
 			lng: this.props.lng
-		});
+		});*/
 		
-		let route = [
-		  [  50.030303,  19.907702 ],
-		  [  50.031696,  19.909246 ],
-		  [  50.031848,  19.908924 ],
-		  [  50.031703,  19.908291 ],
-		  [  50.032054,  19.906918 ],
-		  [  50.033033,  19.907637 ],
-		];
 		map.drawPolyline({
-		  path: route,
+		  path: this.props.route,
 		  strokeColor: '#131540',
 		  strokeOpacity: 0.6,
 		  strokeWeight: 6
