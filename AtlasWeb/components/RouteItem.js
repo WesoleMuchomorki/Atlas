@@ -5,7 +5,7 @@ var moment = require('moment');
 var RouteItem = React.createClass({
 
 	handleClick(){
-		this.props.onClick(this.props.address,this.props.route);
+		this.props.onClick(this.props.address,this.props.route,this.props.name);
 	},
 
 	render(){
@@ -18,7 +18,7 @@ var RouteItem = React.createClass({
 
 		return (
 			<a className={cn} onClick={this.handleClick}>
-				{'Route'}
+				{this.props.name}
 				<span className="glyphicon glyphicon-menu-right"></span>
 			</a>
 		)

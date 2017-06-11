@@ -8,8 +8,9 @@ var App = React.createClass({
 
 	getInitialState(){
 
+		var cName = ['Campus'];
 		var routes = [
-			[
+			[ 'Campus',
 			  [  50.030303,  19.907702 ],
 			  [  50.031696,  19.909246 ],
 			  [  50.031848,  19.908924 ],
@@ -18,6 +19,7 @@ var App = React.createClass({
 			  [  50.033033,  19.907637 ],
 			],
 			[
+				'Kazimierz',
 				[50.050,19.936],
 				[50.053,19.937],
 				[50.055,19.934],
@@ -29,6 +31,7 @@ var App = React.createClass({
 		];
 
 		let currentRoute = [
+			'Campus',
 		  [  50.030303,  19.907702 ],
 		  [  50.031696,  19.909246 ],
 		  [  50.031848,  19.908924 ],
@@ -40,6 +43,7 @@ var App = React.createClass({
 		return {
 			routes: routes,
 			currentRoute: currentRoute,
+			cName: cName,
 			currentAddress: 'Cracow, Campus',
 			mapCoordinates: {
 				lat: 50.030521,
@@ -48,7 +52,7 @@ var App = React.createClass({
 		};
 	},
 	
-	setRoute(address,route){
+	setRoute(address,route,name){
 		
 		var self = this;
 
@@ -63,6 +67,7 @@ var App = React.createClass({
 
 				self.setState({
 					currentRoute: route,
+					cName: name,
 					currentAddress: results[0].formatted_address,
 					mapCoordinates: {
 						lat: latlng.lat(),
@@ -87,7 +92,7 @@ var App = React.createClass({
 
 				<Map lat={this.state.mapCoordinates.lat} lng={this.state.mapCoordinates.lng} route={this.state.currentRoute}/>
 				
-				<RouteList routes={this.state.routes} route={this.state.currentRoute} activeRouteAddress={this.state.currentAddress} 
+				<RouteList routes={this.state.routes} route={this.state.currentRoute} activeRoute={this.state.cName} 
 					onClick={this.setRoute} />
 				
 			</div>
