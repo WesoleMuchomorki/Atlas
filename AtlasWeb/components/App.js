@@ -29,7 +29,22 @@ var App = React.createClass({
 				[50.071,19.920]
 			]
 		];
-
+		
+		var SERVER_URL = 'http://10.0.2.2:8000/';
+		const url = SERVER_URL + 'routes/0';
+		var myHeaders = new Headers();
+		myHeaders.append('charset', 'utf-8');
+		fetch(url, {method: 'GET', headers: myHeaders})
+		.then((response) => response.json())
+		.then((responseJson) => {
+			console.log(responseJson)
+		})
+		.catch((err) => {
+			console.log(err);
+		});
+		
+		
+		
 		let currentRoute = [
 			'Campus',
 		  [  50.030303,  19.907702 ],
