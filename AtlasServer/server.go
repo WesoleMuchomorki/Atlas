@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"encoding/json"
+	"sort"
 )
 
 //
@@ -56,10 +57,30 @@ func putRoute(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("-------- END DATA --------")
 }
 
-func getRoute(w http.ResponseWriter, r *http.Request) {
+func getRoute(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	// XXX placeholder
-	fmt.Fprintf(w, "[{\"latitude\":50.050,\"longitude\":19.936},{\"latitude\":50.053,\"longitude\":19.937},{\"latitude\":50.055,\"longitude\":19.934},{\"latitude\":50.061,\"longitude\":19.932},{\"latitude\":50.064,\"longitude\":19.931},{\"latitude\":50.068,\"longitude\":19.926},{\"latitude\":50.071,\"longitude\":19.920}]")
+
+	trip_id := mux.Vars(r)["id"]
+
+	rows, err := db.Query("SELECT ord, x, y FROM points WHERE trip_id = " + trip_id)
+	checkErr(err)
+
+	var path []point
+
+	for rows.Next() {
+		var p point
+
+		err = rows.Scan(&p.ord, &p.Latitude, &p.Longitude)
+		checkErr(err)
+
+		path = append(path,p)
+	}
+
+	sort.Slice(path, func(i, j int) bool { return path[i].ord < path[j].ord })
+
+	json_path, _ := json.Marshal(path)
+
+	fmt.Fprintf(w, string(json_path))
 }
 
 func getRouteList(db *sql.DB, w http.ResponseWriter, r *http.Request) {
@@ -97,7 +118,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", index).Methods("GET")
 	r.HandleFunc("/routes/{id}", putRoute).Methods("PUT")
-	r.HandleFunc("/routes/{id}", getRoute).Methods("GET")
+	r.HandleFunc("/routes/{id}", func(w http.ResponseWriter, r *http.Request) {getRoute(db,w,r)}).Methods("GET")
 	r.HandleFunc("/routes/", func(w http.ResponseWriter, r *http.Request) {getRouteList(db,w,r)})
 	http.ListenAndServe(":8000", r)
 
