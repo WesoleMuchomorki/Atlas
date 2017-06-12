@@ -1,0 +1,14 @@
+{
+	"user": "11",
+	"name": "najnowsza_traska",
+	"points": [
+		{"latitude":-70.73720000, "longitude":25.18910000},
+		{"latitude":-70.73700000, "longitude":25.18920000},
+		{"latitude":-70.73690000, "longitude":25.18930000},
+		{"latitude":-70.73680000, "longitude":25.18940000},
+		{"latitude":-70.73670000, "longitude":25.18940000},
+		{"latitude":-70.73650000, "longitude":25.18960000},
+		{"latitude":-70.73650000, "longitude":25.18970000},
+		{"latitude":-70.73640000, "longitude":25.18980000}
+	]
+}

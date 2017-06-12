@@ -5,7 +5,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	"io/ioutil"
+//	"io/ioutil"
 	"net/http"
 	"encoding/json"
 	"sort"
@@ -37,6 +37,12 @@ type route struct {
 	Name string `json:"name"`
 }
 
+type routePut struct {
+	User string `json:"user"`
+	Name string `json:"name"`
+	Points []point `json:"points"`
+}
+
 //
 // Switch
 //
@@ -46,15 +52,41 @@ func index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "It works!\n")
 }
 
-func putRoute(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+func putRoute(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+
 	w.WriteHeader(http.StatusOK)
-	data, _ := ioutil.ReadAll(r.Body)
-	data_str := string(data)
-	fmt.Printf("put route: %v\n", vars["id"])
-	fmt.Println("-------- BEGIN DATA --------")
-	fmt.Println(data_str)
-	fmt.Println("-------- END DATA --------")
+
+	decoder := json.NewDecoder(r.Body)
+
+	var rt routePut
+	err := decoder.Decode(&rt)
+	checkErr(err)
+
+	_, err = db.Query(fmt.Sprintf("INSERT INTO trips (name, user_id) VALUES (\"%v\", %v)", rt.Name, rt.User))
+	checkErr(err)
+
+	res, err := db.Query(fmt.Sprintf("SELECT id FROM trips WHERE name=\"%v\" AND user_id=%v", rt.Name, rt.User))
+	var route_id int
+
+	if res.Next() {
+		err = res.Scan(&route_id)
+		checkErr(err)
+
+		p := rt.Points[0]
+
+		query := fmt.Sprintf("INSERT INTO points (trip_id, ord, x, y) VALUES (%d, %d, %v, %v)", route_id, 1, p.Latitude, p.Longitude)
+
+		for i := 1; i < len(rt.Points); i++ {
+			p := rt.Points[i]
+
+			query += fmt.Sprintf(", (%d, %d, %v, %v)", route_id, i+1, p.Latitude, p.Longitude)
+		}
+
+		_, err = db.Query(query)
+		checkErr(err)
+	}
+
+	defer r.Body.Close()
 }
 
 func getRoute(db *sql.DB, w http.ResponseWriter, r *http.Request) {
@@ -103,7 +135,6 @@ func getRouteList(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	json_list, _ := json.Marshal(list)
 
-	fmt.Println(string(json_list))
 	fmt.Fprintf(w, string(json_list))
 }
 
@@ -117,9 +148,9 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", index).Methods("GET")
-	r.HandleFunc("/routes/{id}", putRoute).Methods("PUT")
 	r.HandleFunc("/routes/{id}", func(w http.ResponseWriter, r *http.Request) {getRoute(db,w,r)}).Methods("GET")
-	r.HandleFunc("/routes/", func(w http.ResponseWriter, r *http.Request) {getRouteList(db,w,r)})
+	r.HandleFunc("/routes/", func(w http.ResponseWriter, r *http.Request) {getRouteList(db,w,r)}).Methods("GET")
+	r.HandleFunc("/routes/", func(w http.ResponseWriter, r *http.Request) {putRoute(db,w,r)}).Methods("PUT")
 	http.ListenAndServe(":8000", r)
 
 	db.Close()
